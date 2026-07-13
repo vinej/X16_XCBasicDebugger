@@ -1,13 +1,13 @@
 {
-    "name": "x16-xbasic-debug",
-    "displayName": "X16 XBasic Debugger",
+    "name": "x16-xcbasic-debug",
+    "displayName": "X16 XCBasic Debugger",
     "description": "XC=BASIC (XBasic) on the Commander X16: source-level debugging via the Box16 fork's binary monitor, plus syntax highlighting for .bas files.",
     "version": "0.1.0",
     "publisher": "vinej",
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "https://github.com/vinej/X16_XBasicDebugger"
+        "url": "https://github.com/vinej/X16_XCBasicDebugger"
     },
     "engines": {
         "vscode": "^1.75.0"

@@ -1,4 +1,4 @@
-# X16_XBasicDebugger — project context for Claude
+# X16_XCBasicDebugger — project context for Claude
 
 ## What this project is
 
@@ -88,7 +88,7 @@ assembly → assembles with **DASM** → native `.prg`. So this is a twin of
   table telling users where to get them.
 - Claude verifies CLI-first; interactive VSCode tests are handed to the user with
   precise steps.
-- This repo: published at https://github.com/vinej/X16_XBasicDebugger (public,
+- This repo: published at https://github.com/vinej/X16_XCBasicDebugger (public,
   MIT, branch `master`). Commit/push after the user confirms features work.
   The GitHub repo was created via the REST API using the Git Credential Manager
   token (gh CLI is not authenticated); `git push` works through that credential.

@@ -1,4 +1,4 @@
-// X16 XBasic Debugger -- VSCode glue. No build step, no npm dependencies:
+// X16 XCBasic Debugger -- VSCode glue. No build step, no npm dependencies:
 // the debug adapter is Python (tools/dap_adapter.py, which also compiles the
 // .bas via the debug-info xcbasic3 fork on launch) and everything else is
 // declared in package.json. This file wires the adapter factory, a default

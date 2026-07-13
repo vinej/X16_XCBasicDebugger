@@ -1,4 +1,4 @@
-# X16 XBasic Debugger
+# X16 XCBasic Debugger
 
 **Goal: source-level debugging of [XC=BASIC 3](https://xc-basic.net) ("XBasic")
 programs on the Commander X16 in VSCode** — breakpoints on `.bas` lines, step
@@ -143,7 +143,7 @@ resolution — deferred to a later milestone, same as Prog8's early scope.
 ## Using it
 
 The extension is installed via an NTFS junction into
-`%USERPROFILE%\.vscode\extensions\vinej.x16-xbasic-debug-0.1.0` → this repo, so
+`%USERPROFILE%\.vscode\extensions\vinej.x16-xcbasic-debug-0.1.0` → this repo, so
 edits to `tools\dap_adapter.py` apply on VSCode restart. Open this folder in
 VSCode, open `examples\demo.bas`, set gutter breakpoints, and press **F5**
 (configs in `.vscode\launch.json`). The adapter needs **Python 3** on PATH and
