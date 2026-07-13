@@ -1,8 +1,8 @@
-# XC=BASIC debug-info + x16-65C02 patch (vinej/xc-basic3, branch debug-info)
-# Compiler source changes vs upstream tag v3.2.0-beta. In addition to
-# what is shown here, 25 lib/*.asm runtime files had their line-1
-# 'PROCESSOR 6502' made target-aware (65c02 for x16) -- too bulky to
-# inline; see the branch. Apply source changes: patch -p1 < this-file
+# XC=BASIC debug-info + x16 patch (vinej/xc-basic3, branch debug-info)
+# Compiler source changes vs upstream tag v3.2.0-beta. Also on the branch
+# (too bulky to inline): 25 lib/*.asm made processor-target-aware, the
+# bundled x16_library under lib/x16asm/, and lib/x16*.bas wrapper modules.
+# Apply source changes: patch -p1 < this-file
 
 diff --git a/source/compiler/compiler.d b/source/compiler/compiler.d
 index 90ebf50..0a45592 100644
@@ -28,7 +28,7 @@ index 90ebf50..0a45592 100644
                              if(this.inTypeDef && !this.inMethod
                                  && stmt.classinfo.name != "statement.rem_stmt.Rem_stmt"
 diff --git a/source/compiler/intermediatecode.d b/source/compiler/intermediatecode.d
-index 4ab047e..2cca300 100644
+index 4ab047e..d57e25d 100644
 --- a/source/compiler/intermediatecode.d
 +++ b/source/compiler/intermediatecode.d
 @@ -58,8 +58,11 @@ class IntermediateCode
@@ -45,6 +45,44 @@ index 4ab047e..2cca300 100644
  vic20    EQU %0000001000000000
  vic20_3k EQU %0000001000000001
  vic20_8k EQU %0000001000000010
+@@ -85,11 +88,28 @@ USEIRQ   EQU ` ~ (useIrqs ? "1" : "0") ~ `
+ FASTIRQ  EQU ` ~ (fastIrqs ? "1" : "0") ~ `
+ USESPR   EQU ` ~ (useSprites ? "1" : "0") ~ `
+ USESFX   EQU ` ~ (useSound ? "1" : "0") ~ `
+-    SEG "UPSTART"
++` ~ (target == "x16" ? getX16LibSetup() : "") ~ `    SEG "UPSTART"
+     ORG $` ~ to!string(startAddress, 16) ~ "\n" ~ getBasicStub();
+         return startUpCode;
+     }
+ 
++    // x16_library integration (vinej fork): for the x16 target, auto-wire the
++    // bundled DASM library (lib/x16asm). x16.asm (constants + macros) emits no
++    // code and goes up top; x16_code.asm (the routines) is gated by X16_USE_*
++    // so it emits nothing unless a wrapper module (e.g. x16sprite.bas) sets a
++    // flag. Programs that don't use it therefore pay nothing.
++    private string getX16LibSetup()
++    {
++        return "X16_ZP = $70\n    INCDIR \"" ~ getLibraryDir()
++            ~ "/x16asm\"\n    INCLUDE \"x16.asm\"\n";
++    }
++
++    private string getX16LibCode()
++    {
++        return "\n    INCDIR \"" ~ getLibraryDir()
++            ~ "/x16asm\"\n    INCLUDE \"x16_code.asm\"\n";
++    }
++
+     private string getBasicStub()
+     {
+         if (basicLoader) {
+@@ -118,6 +138,7 @@ next_line:
+         return  getStartUp() ~
+                 getSegment(PROGRAM_SEGMENT) ~ "    xend\n\n" ~
+                 getSegment(ROUTINE_SEGMENT) ~
++                (target == "x16" ? getX16LibCode() : "") ~
+                 getSegment(LIBRARY_SEGMENT) ~
+                 getSegment(DATA_SEGMENT) ~
+                 getSegment(VAR_SEGMENT) ~
 diff --git a/source/compiler/variable.d b/source/compiler/variable.d
 index fef25cb..b86969e 100644
 --- a/source/compiler/variable.d

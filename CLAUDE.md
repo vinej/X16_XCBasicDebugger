@@ -120,28 +120,39 @@ in-core line stepping for speed.
 
 Adapter trace: env `XCBASIC_DAP_LOG=<file>`. Test program: `examples/demo.bas`.
 
-## x16_library integration (2026-07-13)
+## x16_library integration — bundled into the fork as modules (2026-07-13)
 
-`examples/bounce.bas` recreates the `c:\quartus\projects\x16_library` (DASM)
-bounce demo in XBasic; `examples/x16lib.bas` catalogues the wrapper subs. New
-fork changes on `debug-info` (committed + pushed): x16 target now emits
-`PROCESSOR 65c02` (`intermediatecode.d`) and the 25 runtime `lib/*.asm` files'
-`PROCESSOR 6502` is target-aware — the X16 is a 65C02 and DASM allows only one
-processor type, so the whole assembly (runtime + library) must agree.
+The `c:\quartus\projects\x16_library` (DASM) is now **bundled into the fork**
+(`lib/x16asm/`) and auto-wired for x16: `intermediatecode.d` emits
+`INCLUDE "x16.asm"` (top, zero code) + `INCLUDE "x16_code.asm"` (bottom, gated
+by `X16_USE_*`). Wrapper modules `lib/x16*.bas` (~27, `SHARED STATIC`, named
+`x16_<routine>`) are mostly generated (scratchpad `genwrap.py` parses the
+library's `in:`/`out:` comments); `x16ym/x16vera/x16palette` hand-tuned.
+`lib/x16const.bas` = `SHARED CONST` enums. A program: `INCLUDE "x16sprite.bas"`
+then `CALL x16_sprite_pos(...)`. `examples/bounce.bas` uses this. (The old
+`examples/x16lib.bas` paste-in approach is gone.)
+
+Also on `debug-info`: x16 emits `PROCESSOR 65c02` and the 25 runtime `lib/*.asm`
+`PROCESSOR` directives are target-aware (DASM allows one processor type; runtime
++ library must agree).
 
 Hard-won XBasic facts (don't re-derive):
-- **Inline asm**: `asm … end asm`, each line verbatim; `{varname}` → the var's
-  asm label/const (so wrappers read STATIC params into A/X/Y/X16_P*).
-- **INCLUDE can't share subs**: a `CALL` to a SUB defined in an INCLUDEd file
-  errors "Unknown identifier" (INCLUDE is processed too late). Wrappers must be
-  in the same .bas as callers. `DECLARE` needs an exact-matching prototype.
-- **Block IF uses `END IF`** (two words), not `ENDIF`; `IF c THEN`<nl>…`END IF`.
-  Single-line `IF c THEN stmt` also works.
-- **`VOICE` is a reserved keyword** (sound stmt) — can't be a param name.
-- Library ZP relocated to `X16_ZP = $70` (clears XC=BASIC's `$22–$34` pseudo-
-  regs + FAST window). `x16_library` KERNAL regs r0-r15 ($02-$21) don't clash.
-- `posx=posx+velx` etc. do 24-bit fixed-point in XBasic LONG; `/256` → pixel
-  (WORD) with an expected downcast warning.
+- **`SHARED STATIC`** makes a SUB/FUNCTION `COMMON` → callable across `INCLUDE`.
+  Plain `STATIC` is module-scoped and a cross-file `CALL` errors "Unknown
+  identifier". Same for constants: **`SHARED CONST name = value`** (SHARED
+  first) is cross-include visible.
+- **Inline asm**: `asm … end asm`, verbatim; `{varname}` → the var's asm
+  label/const, so wrappers read STATIC params into A/X/Y/X16_P*. Order stores:
+  X16_P* first (they use A), then Y, X, A last.
+- **Block IF uses `END IF`** (two words), not `ENDIF`.
+- **`VOICE` is a reserved keyword** (sound stmt) — sanitized to `voice_` etc.
+- Library ZP at `X16_ZP = $70` (clears XC=BASIC `$22–$34` pseudo-regs); its
+  KERNAL regs r0-r15 ($02-$21) don't clash. Keep FAST vars below $70.
+- 24-bit fixed point in LONG; `/256` → pixel WORD (expected downcast warning);
+  **16-bit constant folds overflow** even into a LONG — compute bounds in LONG
+  steps at runtime.
+- Headless bounce verification needs a settle delay after `reset_paused` before
+  arming the checkpoint, or the large program flakes (server-closed/timeout).
 - **16-bit constant overflow**: a constant expression like `(640-16-1)*256`
   (=159488) folds in 16-bit and wraps to 28416 even when assigned to a LONG —
   and for the Y bound it wrapped to a *negative* signed value, freezing motion.

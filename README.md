@@ -171,36 +171,48 @@ this machine at `C:\D\dmd2\windows\bin64`, on the Machine PATH). Rebuild with:
 cd xcbasic-sdk && dub build && cp xcbasic3.exe bin/Windows/xcbasic3.exe
 ```
 
-## Using the DASM x16_library from XBasic
+## The x16_library, built into the fork as includable modules
 
-XBasic can drive a hand-written 65C02 assembly library through inline `asm`
-blocks. `examples/bounce.bas` is a full worked example: the
-[x16_library](https://github.com/vinej/x16_library) bounce demo re-created in
-XBasic — a frame-locked sprite bouncing on 8.8 fixed-point velocity with PSG
-blips and a YM2151 FM note on box collision. The graphics/sound come from the
-library; the physics and AABB collision are plain XBasic (breakpoint the move
-code and watch `posx`/`velx` in the Variables pane). `examples/x16lib.bas` is
-the catalogue of thin SUB/FUNCTION wrappers it uses.
+The [x16_library](https://github.com/vinej/x16_library) (a DASM assembly
+library for the X16: sprites, VERA, PSG, YM2151, tilemaps, bitmap graphics,
+collision, …) is **bundled into the compiler fork** (`lib/x16asm/`) and exposed
+as XBasic modules. A program just includes the module it needs:
 
-Four things make this work (all now handled):
+```basic
+INCLUDE "x16sprite.bas"
+INCLUDE "x16psg.bas"
+CALL x16_sprite_pos(0, x, y)
+CALL x16_psg_set_freq(0, 2362)
+```
 
-1. **65C02.** The X16 is a 65C02, but stock XC=BASIC emitted `PROCESSOR 6502`,
-   so the library's `trb/tsb/stz` would not assemble. The fork now targets
-   `65c02` for `-t x16` (see `docs/debug-info.patch`).
-2. **Inline asm + `{var}` substitution.** Inside `asm … end asm`, `{name}` is
-   replaced by an XBasic variable's address, so a wrapper reads its `STATIC`
-   params straight into the library's `A/X/Y`/`X16_P*` calling convention.
-3. **Zero page.** The library's scratch is relocated with `X16_ZP = $70` to
-   clear XC=BASIC's pseudo-registers (`$22–$34`) and FAST-var window; keep FAST
-   vars below `$70`.
-4. **Paste, don't INCLUDE.** XC=BASIC resolves `INCLUDE` too late in its
-   compile for cross-file `SUB` calls, so wrappers must live in the same `.bas`
-   as their callers (the `INCDIR`/`INCLUDE "x16.asm"` asm blocks are fine to
-   include). `bounce.bas` inlines its wrappers for this reason.
+`examples/bounce.bas` is the full worked example — the library's bounce demo
+re-created in XBasic: a frame-locked sprite bouncing on 8.8 fixed-point velocity
+with PSG blips and a YM2151 FM note on box collision. The graphics/sound come
+from the library; the physics and AABB collision are plain XBasic (breakpoint
+the move code and watch `posx`/`velx` in the Variables pane).
 
-`bounce.bas`/`x16lib.bas` reference the library at
-`C:/quartus/projects/x16_library/src_dasm` via `INCDIR` — adjust that path for
-your checkout.
+How it works (all in the fork):
+
+1. **Auto-wiring.** For `-t x16` the compiler emits the library's `x16.asm`
+   (constants + macros, zero code) at the top and `x16_code.asm` (routines,
+   gated by `X16_USE_*`) at the bottom — so it emits nothing unless a module is
+   used, and non-library programs are byte-identical.
+2. **Wrapper modules** `lib/x16*.bas` (~27 of them, e.g. `x16sprite`, `x16psg`,
+   `x16ym`, `x16gfx`, `x16screen`, `x16irq`, `x16collide`) each hold
+   `SHARED STATIC` SUB/FUNCTIONs named `x16_<routine>` (the `x16_` prefix keeps
+   them clear of the library's raw labels and XBasic keywords). `SHARED` makes
+   them `COMMON` so they're callable across the `INCLUDE`. Most are generated
+   from the library's own `in:`/`out:` header comments; a few (`x16ym`,
+   `x16vera`, `x16palette`) are hand-tuned where those comments carry carry-flag
+   semantics. `lib/x16const.bas` provides the enum values as `SHARED CONST`.
+3. **65C02.** The X16 is a 65C02; the fork targets it (`trb/tsb/stz` assemble).
+4. **Zero page.** Library scratch is at `X16_ZP = $70`, clear of XC=BASIC's
+   pseudo-registers (`$22–$34`); keep FAST vars below `$70`.
+
+Gotchas worth knowing (all handled): XC=BASIC block-`IF` is `END IF` (two
+words); `VOICE` is a reserved word; a 16-bit constant fold like
+`(640-16-1)*256` overflows even when assigned to a `LONG` — compute such bounds
+in LONG steps at runtime.
 
 ## License
 
